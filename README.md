@@ -4,7 +4,7 @@ Sample project to read license plates. Currently it's able to read Irish, United
 
 You can use the example images stored under `examples` to test the application.
 
-![alt text](https://github.com/jllarraz/LicensePlateAndroid/blob/master/examples/ireland.png)
+![alt text](https://github.com/jllarraz/LicensePlateOcrAndroid/blob/master/examples/ireland.png)
 
 This project is based in the information and tutorials found in (https://developers.google.com/vision/)
 
