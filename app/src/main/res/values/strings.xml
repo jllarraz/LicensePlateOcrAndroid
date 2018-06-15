@@ -1,0 +1,45 @@
+<resources>
+    <string name="app_name">License Plate Reader</string>
+
+    <string name="scan_plate">Scan Plate</string>
+
+    <string name="hint_scan">Click camera button</string>
+
+    <string name="permission_camera_rationale">Access to the camera is needed for detection</string>
+    <string name="no_camera_permission">This application cannot run because it does not have the camera permission.  The application will now exit.</string>
+    <string name="low_storage_error">Ocr dependencies cannot be downloaded due to low device storage</string>
+    <string name="ok">OK</string>
+
+    <string name="action_enable_flash">Enable Flash</string>
+    <string name="action_disable_flash">Disable Flash</string>
+
+
+
+    <string name="scanning">Scanning…</string>
+
+
+    <string name="ocr_tutorial_need_help">Need Help?</string>
+    <string name="ocr_tutorial_tips">Tips for getting best results.</string>
+
+    <string name="ocr_tutorial_vehicle_tips_title">Tips</string>
+    <string name="ocr_tutorial_vehicle_tips_message">\n
+        - Scan facing straight on, avoid reading at angles.\n
+        - Works best in natural light with the sun behind you.\n
+        - Avoid glare when possible,\n
+        - Close proximity to the plate will give the best results.\n
+        - Pinch to zoom if at a distance from the plate.\n
+        - At night use the phones flash.\n
+    </string>
+    <string name="ocr_tutorial_vehicle_important_title">Important</string>
+    <string name="ocr_tutorial_vehicle_important_message">\n
+        - Has trouble identifying the number 1 in certain conditions.\n
+        - Screw covers on licence plate can effect scan accuracy.\n
+    </string>
+    <string name="ocr_tutorial_vehicle_supported_plates_title">Supported Plates</string>
+    <string name="ocr_tutorial_vehicle_supported_plates_message">\n
+        - Ireland\n
+        - Northern Ireland\n
+        - UK\n
+    </string>
+
+</resources>

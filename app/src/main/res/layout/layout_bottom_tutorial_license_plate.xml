@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    app:layout_behavior="@string/bottom_sheet_behavior"
+    app:behavior_hideable="false"
+    app:behavior_peekHeight="123dp"
+    android:orientation="vertical">
+
+    <TextView
+        android:id="@+id/log"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_margin="10dp"
+        android:gravity="center"
+        android:text="@string/scanning"
+        style="@style/Text.SubHead.Light"/>
+
+    <RelativeLayout
+
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/colorPrimary">
+
+        <RelativeLayout
+            android:id="@+id/headerLayout"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_alignParentTop="true"
+            android:paddingLeft="@dimen/activity_horizontal_margin"
+            android:paddingRight="@dimen/activity_horizontal_margin"
+            android:paddingBottom="@dimen/activity_horizontal_margin"
+            >
+
+            <ImageView
+                android:id="@+id/white_pill"
+                android:layout_width="20dp"
+                android:layout_height="3dp"
+                android:src="@drawable/white_pill"
+                android:layout_centerHorizontal="true"
+                android:layout_alignParentTop="true"
+                android:layout_marginTop="@dimen/card_margin"
+                android:layout_marginBottom="@dimen/margin_tiny"/>
+
+            <ImageView
+                android:id="@+id/icon"
+                android:layout_width="@dimen/viewport_icon_height"
+                android:layout_height="match_parent"
+                android:src="@drawable/ic_lifebuoy"
+                android:tint="@color/white"
+                android:layout_marginLeft="@dimen/margin_medium_small"
+                android:layout_marginRight="@dimen/margin_medium_small"
+                android:layout_alignParentStart="true"
+                android:layout_centerVertical="true"
+                android:layout_below="@+id/white_pill"
+                android:layout_alignTop="@+id/label_source"
+                android:layout_alignBottom="@+id/label_property_status"/>
+
+            <TextView
+                android:id="@+id/label_source"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/ocr_tutorial_need_help"
+                style="@style/Text.SubHead.Light"
+                android:layout_toEndOf="@+id/icon"
+                android:layout_below="@+id/white_pill"/>
+
+            <TextView
+                android:id="@+id/label_property_status"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/ocr_tutorial_tips"
+                style="@style/Text.Body3.Light"
+                android:layout_toEndOf="@+id/icon"
+                android:layout_below="@+id/label_source"
+
+                 />
+
+        </RelativeLayout>
+
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_marginTop="@dimen/margin_medium"
+            android:paddingLeft="@dimen/activity_horizontal_margin"
+            android:paddingRight="@dimen/activity_horizontal_margin"
+            android:paddingBottom="@dimen/activity_horizontal_margin"
+            android:layout_below="@+id/headerLayout">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/ocr_tutorial_vehicle_tips_title"
+                    style="@style/Text.Body3.Light.Bold"/>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/ocr_tutorial_vehicle_tips_message"
+                    style="@style/Text.Body3.Light"/>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/ocr_tutorial_vehicle_important_title"
+                    style="@style/Text.Body3.Light.Bold"/>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/ocr_tutorial_vehicle_important_message"
+                    style="@style/Text.Body3.Light"
+                    />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/ocr_tutorial_vehicle_supported_plates_title"
+                    style="@style/Text.Body3.Light.Bold"/>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/ocr_tutorial_vehicle_supported_plates_message"
+                    style="@style/Text.Body3.Light"/>
+        </LinearLayout>
+
+    </RelativeLayout>
+
+</LinearLayout>

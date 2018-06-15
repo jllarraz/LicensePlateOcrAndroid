@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <dimen name="activity_horizontal_margin">16dp</dimen>
+    <dimen name="card_margin">10dp</dimen>
+    <dimen name="margin_tiny">4dp</dimen>
+    <dimen name="viewport_icon_height">36dp</dimen>
+    <dimen name="margin_medium_small">12dp</dimen>
+    <dimen name="margin_medium">22dp</dimen>
+    <dimen name="text_size_medium">16sp</dimen>
+    <dimen name="text_size_small">13sp</dimen>
+</resources>

@@ -1,0 +1,45 @@
+<resources>
+
+    <!-- Base application theme. -->
+    <style name="AppTheme" parent="Theme.AppCompat.Light.DarkActionBar">
+        <!-- Customize your theme here. -->
+        <item name="colorPrimary">@color/colorPrimary</item>
+        <item name="colorPrimaryDark">@color/colorPrimaryDark</item>
+        <item name="colorAccent">@color/colorAccent</item>
+    </style>
+
+    <style name="AppTheme.NoActionBar">
+        <item name="windowActionBar">false</item>
+        <item name="windowNoTitle">true</item>
+    </style>
+
+
+    <style name="Text">
+
+    </style>
+
+    <style name="Text.SubHead">
+        <item name="android:textSize">@dimen/text_size_medium</item>
+        <item name="android:fontFamily">@font/regular</item>
+        <item name="android:textColor">@color/black</item>
+    </style>
+    <style name="Text.SubHead.Light" parent="Text.SubHead">
+        <item name="android:textColor">@color/white</item>
+        <item name="android:fontFamily">@font/bold</item>
+    </style>
+
+    <style name="Text.Body3">
+        <item name="android:fontFamily">@font/regular</item>
+        <item name="android:textSize">@dimen/text_size_small</item>
+        <item name="android:textColor">@color/grey_mid</item>
+        <item name="android:lineSpacingExtra">0sp</item>
+    </style>
+    <style name="Text.Body3.Light" parent="Text.Body3">
+        <item name="android:textColor">@color/white</item>
+    </style>
+
+    <style name="Text.Body3.Light.Bold" parent="Text.Body3.Light">
+        <item name="android:fontFamily">@font/bold</item>
+    </style>
+
+</resources>
