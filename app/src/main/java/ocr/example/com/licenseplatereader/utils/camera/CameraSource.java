@@ -24,7 +24,6 @@ import android.graphics.SurfaceTexture;
 import android.hardware.Camera;
 import android.hardware.Camera.CameraInfo;
 import android.os.Build;
-import android.os.SystemClock;
 import android.support.annotation.Nullable;
 import android.support.annotation.RequiresPermission;
 import android.support.annotation.StringDef;
@@ -35,7 +34,6 @@ import android.view.SurfaceView;
 import android.view.WindowManager;
 
 import com.google.android.gms.common.images.Size;
-import com.google.android.gms.vision.Detector;
 import com.google.android.gms.vision.Frame;
 
 import java.io.IOException;
@@ -115,7 +113,7 @@ public class CameraSource {
 
     private Context mContext;
 
-    private final Object mCameraLock = new Object();
+    private final Object processorLock = new Object();
 
     // Guarded by mCameraLock
     private Camera mCamera;
@@ -151,7 +149,8 @@ public class CameraSource {
      * frames become available from the camera.
      */
     private Thread mProcessingThread;
-    private FrameProcessingRunnable mFrameProcessor;
+    private FrameProcessingRunnable processingRunnable;
+    private GraphicOverlay graphicOverlay;
 
     /**
      * Map to convert between a byte array, received from the camera, and its associated byte
@@ -168,23 +167,25 @@ public class CameraSource {
      * Builder for configuring and creating an associated camera source.
      */
     public static class Builder {
-        private final Detector<?> mDetector;
+
+        private VisionImageProcessor frameProcessor;
         private CameraSource mCameraSource = new CameraSource();
 
         /**
          * Creates a camera source builder with the supplied context and detector.  Camera preview
          * images will be streamed to the associated detector upon starting the camera source.
          */
-        public Builder(Context context, Detector<?> detector) {
+        public Builder(Context context, VisionImageProcessor frameProcessor, GraphicOverlay graphicOverlay) {
             if (context == null) {
                 throw new IllegalArgumentException("No context supplied.");
             }
-            if (detector == null) {
+            if (frameProcessor == null) {
                 throw new IllegalArgumentException("No detector supplied.");
             }
 
-            mDetector = detector;
+            this.frameProcessor = frameProcessor;
             mCameraSource.mContext = context;
+            mCameraSource.graphicOverlay =  graphicOverlay;
         }
 
         /**
@@ -244,7 +245,7 @@ public class CameraSource {
          * Creates an instance of the camera source.
          */
         public CameraSource build() {
-            mCameraSource.mFrameProcessor = mCameraSource.new FrameProcessingRunnable(mDetector);
+            mCameraSource.processingRunnable = mCameraSource.new FrameProcessingRunnable(this.frameProcessor);
             return mCameraSource;
         }
     }
@@ -320,9 +321,10 @@ public class CameraSource {
      * Stops the camera and releases the resources of the camera and underlying detector.
      */
     public void release() {
-        synchronized (mCameraLock) {
+        synchronized (processorLock) {
             stop();
-            mFrameProcessor.release();
+            processingRunnable.release();
+            cleanScreen();
         }
     }
 
@@ -334,7 +336,7 @@ public class CameraSource {
      */
     @RequiresPermission(Manifest.permission.CAMERA)
     public CameraSource start() throws IOException {
-        synchronized (mCameraLock) {
+        synchronized (processorLock) {
             if (mCamera != null) {
                 return this;
             }
@@ -352,8 +354,8 @@ public class CameraSource {
             }
             mCamera.startPreview();
 
-            mProcessingThread = new Thread(mFrameProcessor);
-            mFrameProcessor.setActive(true);
+            mProcessingThread = new Thread(processingRunnable);
+            processingRunnable.setActive(true);
             mProcessingThread.start();
         }
         return this;
@@ -368,7 +370,7 @@ public class CameraSource {
      */
     @RequiresPermission(Manifest.permission.CAMERA)
     public CameraSource start(SurfaceHolder surfaceHolder) throws IOException {
-        synchronized (mCameraLock) {
+        synchronized (processorLock) {
             if (mCamera != null) {
                 return this;
             }
@@ -377,8 +379,8 @@ public class CameraSource {
             mCamera.setPreviewDisplay(surfaceHolder);
             mCamera.startPreview();
 
-            mProcessingThread = new Thread(mFrameProcessor);
-            mFrameProcessor.setActive(true);
+            mProcessingThread = new Thread(processingRunnable);
+            processingRunnable.setActive(true);
             mProcessingThread.start();
         }
         return this;
@@ -394,8 +396,8 @@ public class CameraSource {
      * resources of the underlying detector.
      */
     public void stop() {
-        synchronized (mCameraLock) {
-            mFrameProcessor.setActive(false);
+        synchronized (processorLock) {
+            processingRunnable.setActive(false);
             if (mProcessingThread != null) {
                 try {
                     // Wait for the thread to complete to ensure that we can't have multiple threads
@@ -452,7 +454,7 @@ public class CameraSource {
     }
 
     public int doZoom(float scale) {
-        synchronized (mCameraLock) {
+        synchronized (processorLock) {
             if (mCamera == null) {
                 return 0;
             }
@@ -494,7 +496,7 @@ public class CameraSource {
      * @param jpeg    the callback for JPEG image data, or null
      */
     public void takePicture(ShutterCallback shutter, PictureCallback jpeg) {
-        synchronized (mCameraLock) {
+        synchronized (processorLock) {
             if (mCamera != null) {
                 PictureStartCallback startCallback = new PictureStartCallback();
                 startCallback.mDelegate = shutter;
@@ -533,7 +535,7 @@ public class CameraSource {
      * @see #getFocusMode()
      */
     public boolean setFocusMode(@FocusMode String mode) {
-        synchronized (mCameraLock) {
+        synchronized (processorLock) {
             if (mCamera != null && mode != null) {
                 Camera.Parameters parameters = mCamera.getParameters();
                 if (parameters.getSupportedFocusModes().contains(mode)) {
@@ -573,7 +575,7 @@ public class CameraSource {
      * @see #getFlashMode()
      */
     public boolean setFlashMode(@FlashMode String mode) {
-        synchronized (mCameraLock) {
+        synchronized (processorLock) {
             if (mCamera != null && mode != null) {
                 Camera.Parameters parameters = mCamera.getParameters();
                 if (parameters.getSupportedFlashModes().contains(mode)) {
@@ -608,7 +610,7 @@ public class CameraSource {
      * @see #cancelAutoFocus()
      */
     public void autoFocus(@Nullable AutoFocusCallback cb) {
-        synchronized (mCameraLock) {
+        synchronized (processorLock) {
             if (mCamera != null) {
                 CameraAutoFocusCallback autoFocusCallback = null;
                 if (cb != null) {
@@ -629,7 +631,7 @@ public class CameraSource {
      * @see #autoFocus(AutoFocusCallback)
      */
     public void cancelAutoFocus() {
-        synchronized (mCameraLock) {
+        synchronized (processorLock) {
             if (mCamera != null) {
                 mCamera.cancelAutoFocus();
             }
@@ -649,7 +651,7 @@ public class CameraSource {
             return false;
         }
 
-        synchronized (mCameraLock) {
+        synchronized (processorLock) {
             if (mCamera != null) {
                 CameraAutoFocusMoveCallback autoFocusMoveCallback = null;
                 if (cb != null) {
@@ -699,7 +701,7 @@ public class CameraSource {
             if (mDelegate != null) {
                 mDelegate.onPictureTaken(data);
             }
-            synchronized (mCameraLock) {
+            synchronized (processorLock) {
                 if (mCamera != null) {
                     mCamera.startPreview();
                 }
@@ -1063,121 +1065,114 @@ public class CameraSource {
     private class CameraPreviewCallback implements Camera.PreviewCallback {
         @Override
         public void onPreviewFrame(byte[] data, Camera camera) {
-            mFrameProcessor.setNextFrame(data, camera);
+            processingRunnable.setNextFrame(data, camera);
         }
     }
 
+
+
     /**
      * This runnable controls access to the underlying receiver, calling it to process frames when
-     * available from the camera.  This is designed to run detection on frames as fast as possible
+     * available from the camera. This is designed to run detection on frames as fast as possible
      * (i.e., without unnecessary context switching or waiting on the next frame).
-     * <p/>
-     * While detection is running on a frame, new frames may be received from the camera.  As these
-     * frames come in, the most recent frame is held onto as pending.  As soon as detection and its
-     * associated processing are done for the previous frame, detection on the mostly recently
-     * received frame will immediately start on the same thread.
+     *
+     * <p>While detection is running on a frame, new frames may be received from the camera. As these
+     * frames come in, the most recent frame is held onto as pending. As soon as detection and its
+     * associated processing is done for the previous frame, detection on the mostly recently received
+     * frame will immediately start on the same thread.
      */
     private class FrameProcessingRunnable implements Runnable {
-        private Detector<?> mDetector;
-        private long mStartTimeMillis = SystemClock.elapsedRealtime();
 
         // This lock guards all of the member variables below.
-        private final Object mLock = new Object();
-        private boolean mActive = true;
+        private VisionImageProcessor frameProcessor;
+        private final Object lock = new Object();
+        private boolean active = true;
 
         // These pending variables hold the state associated with the new frame awaiting processing.
-        private long mPendingTimeMillis;
-        private int mPendingFrameId = 0;
-        private ByteBuffer mPendingFrameData;
+        private ByteBuffer pendingFrameData;
 
-        FrameProcessingRunnable(Detector<?> detector) {
-            mDetector = detector;
+        FrameProcessingRunnable(VisionImageProcessor frameProcessor) {
+            this.frameProcessor = frameProcessor;
         }
 
         /**
-         * Releases the underlying receiver.  This is only safe to do after the associated thread
-         * has completed, which is managed in camera source's release method above.
+         * Releases the underlying receiver. This is only safe to do after the associated thread has
+         * completed, which is managed in camera source's release method above.
          */
         @SuppressLint("Assert")
         void release() {
             assert (mProcessingThread.getState() == State.TERMINATED);
-            mDetector.release();
-            mDetector = null;
+            frameProcessor.stop();
+            frameProcessor = null;
         }
 
-        /**
-         * Marks the runnable as active/not active.  Signals any blocked threads to continue.
-         */
+        /** Marks the runnable as active/not active. Signals any blocked threads to continue. */
         void setActive(boolean active) {
-            synchronized (mLock) {
-                mActive = active;
-                mLock.notifyAll();
+            synchronized (lock) {
+                this.active = active;
+                lock.notifyAll();
             }
         }
 
         /**
-         * Sets the frame data received from the camera.  This adds the previous unused frame buffer
-         * (if present) back to the camera, and keeps a pending reference to the frame data for
-         * future use.
+         * Sets the frame data received from the camera. This adds the previous unused frame buffer (if
+         * present) back to the camera, and keeps a pending reference to the frame data for future use.
          */
         void setNextFrame(byte[] data, Camera camera) {
-            synchronized (mLock) {
-                if (mPendingFrameData != null) {
-                    camera.addCallbackBuffer(mPendingFrameData.array());
-                    mPendingFrameData = null;
+            synchronized (lock) {
+                if (pendingFrameData != null) {
+                    camera.addCallbackBuffer(pendingFrameData.array());
+                    pendingFrameData = null;
                 }
 
                 if (!mBytesToByteBuffer.containsKey(data)) {
-                    Log.d(TAG,
-                        "Skipping frame.  Could not find ByteBuffer associated with the image " +
-                        "data from the camera.");
+                    Log.d(
+                            TAG,
+                            "Skipping frame. Could not find ByteBuffer associated with the image "
+                                    + "data from the camera.");
                     return;
                 }
 
-                // Timestamp and frame ID are maintained here, which will give downstream code some
-                // idea of the timing of frames received and when frames were dropped along the way.
-                mPendingTimeMillis = SystemClock.elapsedRealtime() - mStartTimeMillis;
-                mPendingFrameId++;
-                mPendingFrameData = mBytesToByteBuffer.get(data);
+                pendingFrameData = mBytesToByteBuffer.get(data);
 
                 // Notify the processor thread if it is waiting on the next frame (see below).
-                mLock.notifyAll();
+                lock.notifyAll();
             }
         }
 
         /**
-         * As long as the processing thread is active, this executes detection on frames
-         * continuously.  The next pending frame is either immediately available or hasn't been
-         * received yet.  Once it is available, we transfer the frame info to local variables and
-         * run detection on that frame.  It immediately loops back for the next frame without
-         * pausing.
-         * <p/>
-         * If detection takes longer than the time in between new frames from the camera, this will
-         * mean that this loop will run without ever waiting on a frame, avoiding any context
-         * switching or frame acquisition time latency.
-         * <p/>
-         * If you find that this is using more CPU than you'd like, you should probably decrease the
+         * As long as the processing thread is active, this executes detection on frames continuously.
+         * The next pending frame is either immediately available or hasn't been received yet. Once it
+         * is available, we transfer the frame info to local variables and run detection on that frame.
+         * It immediately loops back for the next frame without pausing.
+         *
+         * <p>If detection takes longer than the time in between new frames from the camera, this will
+         * mean that this loop will run without ever waiting on a frame, avoiding any context switching
+         * or frame acquisition time latency.
+         *
+         * <p>If you find that this is using more CPU than you'd like, you should probably decrease the
          * FPS setting above to allow for some idle time in between frames.
          */
+        @SuppressLint("InlinedApi")
+        @SuppressWarnings("GuardedBy")
         @Override
         public void run() {
-            Frame outputFrame;
             ByteBuffer data;
 
             while (true) {
-                synchronized (mLock) {
-                    while (mActive && (mPendingFrameData == null)) {
+                synchronized (lock) {
+                    while (active && (pendingFrameData == null)) {
                         try {
                             // Wait for the next frame to be received from the camera, since we
                             // don't have it yet.
-                            mLock.wait();
+                            lock.wait();
                         } catch (InterruptedException e) {
                             Log.d(TAG, "Frame processing loop terminated.", e);
                             return;
                         }
                     }
 
-                    if (!mActive) {
+                    if (!active) {
                         // Exit the loop once this camera source is stopped or released.  We check
                         // this here, immediately after the wait() above, to handle the case where
                         // setActive(false) had been called, triggering the termination of this
@@ -1185,19 +1180,11 @@ public class CameraSource {
                         return;
                     }
 
-                    outputFrame = new Frame.Builder()
-                            .setImageData(mPendingFrameData, mPreviewSize.getWidth(),
-                                    mPreviewSize.getHeight(), ImageFormat.NV21)
-                            .setId(mPendingFrameId)
-                            .setTimestampMillis(mPendingTimeMillis)
-                            .setRotation(mRotation)
-                            .build();
-
                     // Hold onto the frame data locally, so that we can use this for detection
-                    // below.  We need to clear mPendingFrameData to ensure that this buffer isn't
+                    // below.  We need to clear pendingFrameData to ensure that this buffer isn't
                     // recycled back to the camera before we are done using that data.
-                    data = mPendingFrameData;
-                    mPendingFrameData = null;
+                    data = pendingFrameData;
+                    pendingFrameData = null;
                 }
 
                 // The code below needs to run outside of synchronization, because this will allow
@@ -1205,7 +1192,18 @@ public class CameraSource {
                 // frame.
 
                 try {
-                    mDetector.receiveFrame(outputFrame);
+                    synchronized (processorLock) {
+                        Log.d(TAG, "Process an image");
+                        frameProcessor.process(
+                                data,
+                                new FrameMetadata.Builder()
+                                        .setWidth(mPreviewSize.getWidth())
+                                        .setHeight(mPreviewSize.getHeight())
+                                        .setRotation(mRotation)
+                                        .setCameraFacing(mFacing)
+                                        .build(),
+                                graphicOverlay);
+                    }
                 } catch (Throwable t) {
                     Log.e(TAG, "Exception thrown from receiver.", t);
                 } finally {
@@ -1213,5 +1211,10 @@ public class CameraSource {
                 }
             }
         }
+    }
+
+    /** Cleans up graphicOverlay and child classes can do their cleanups as well . */
+    private void cleanScreen() {
+        graphicOverlay.clear();
     }
 }

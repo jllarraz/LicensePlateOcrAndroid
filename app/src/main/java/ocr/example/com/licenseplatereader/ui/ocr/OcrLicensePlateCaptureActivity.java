@@ -21,14 +21,13 @@ import android.support.design.widget.BottomSheetBehavior;
 import android.widget.LinearLayout;
 
 import com.google.android.gms.common.api.CommonStatusCodes;
-import com.google.android.gms.vision.Detector;
-import com.google.android.gms.vision.text.TextBlock;
+
 
 import ocr.example.com.licenseplatereader.R;
 import ocr.example.com.licenseplatereader.common.IntentData;
 import ocr.example.com.licenseplatereader.utils.camera.OcrLicensePlateListener;
+import ocr.example.com.licenseplatereader.utils.camera.VisionImageProcessor;
 import ocr.example.com.licenseplatereader.utils.ocr.ILicensePlate;
-
 
 /**
  * Activity for the multi-tracker app.  This app detects text and displays the value with the
@@ -56,12 +55,12 @@ public final class OcrLicensePlateCaptureActivity extends OcrCaptureActivity {
     }
 
     @Override
-    protected Detector.Processor<TextBlock> getTextProcessor() {
-        return new OcrLicensePlateDetectorProcessor(mGraphicOverlay, new OcrLicensePlateListener() {
+    protected VisionImageProcessor getTextProcessor() {
+        return new OcrLicensePlateDetectorProcessor(new OcrLicensePlateListener() {
             @Override
-            public void onLicensePlate(ILicensePlate licensePlate) {
+            public void onLicensePlate(ILicensePlate drivingLicense) {
                 Intent data = new Intent();
-                data.putExtra(IntentData.KEY_LICENSE_PLATE, licensePlate);
+                data.putExtra(IntentData.KEY_LICENSE_PLATE, drivingLicense);
                 setResult(CommonStatusCodes.SUCCESS, data);
                 finish();
             }

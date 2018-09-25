@@ -15,17 +15,22 @@
  */
 package ocr.example.com.licenseplatereader.ui.ocr;
 
+import android.support.annotation.NonNull;
 import android.util.Log;
-import android.util.SparseArray;
 
-import com.google.android.gms.vision.Detector;
-import com.google.android.gms.vision.text.Text;
-import com.google.android.gms.vision.text.TextBlock;
+import com.google.android.gms.tasks.Task;
+import com.google.firebase.ml.vision.FirebaseVision;
+import com.google.firebase.ml.vision.common.FirebaseVisionImage;
+import com.google.firebase.ml.vision.text.FirebaseVisionText;
+import com.google.firebase.ml.vision.text.FirebaseVisionTextRecognizer;
 
-import java.util.regex.Pattern;
+import java.io.IOException;
+import java.util.List;
 
+import ocr.example.com.licenseplatereader.utils.camera.FrameMetadata;
 import ocr.example.com.licenseplatereader.utils.camera.GraphicOverlay;
 import ocr.example.com.licenseplatereader.utils.camera.OcrLicensePlateListener;
+import ocr.example.com.licenseplatereader.utils.camera.VisionProcessorBase;
 import ocr.example.com.licenseplatereader.utils.ocr.ILicensePlate;
 import ocr.example.com.licenseplatereader.utils.ocr.LicensePlateManager;
 
@@ -34,43 +39,52 @@ import ocr.example.com.licenseplatereader.utils.ocr.LicensePlateManager;
  * A very simple Processor which receives detected TextBlocks and adds them to the overlay
  * as OcrGraphics.
  */
-public class OcrLicensePlateDetectorProcessor implements Detector.Processor<TextBlock> {
+public class OcrLicensePlateDetectorProcessor extends VisionProcessorBase<FirebaseVisionText> {
 
-    private GraphicOverlay<OcrGraphic> mGraphicOverlay;
+    private static final String TAG = OcrLicensePlateDetectorProcessor.class.getSimpleName();
+
     private OcrLicensePlateListener licenseListener;
+    private final FirebaseVisionTextRecognizer detector;
 
-    OcrLicensePlateDetectorProcessor(GraphicOverlay<OcrGraphic> ocrGraphicOverlay, OcrLicensePlateListener licenseListener) {
-        mGraphicOverlay = ocrGraphicOverlay;
+    OcrLicensePlateDetectorProcessor(OcrLicensePlateListener licenseListener) {
         this.licenseListener= licenseListener;
+        detector = FirebaseVision.getInstance().getOnDeviceTextRecognizer();
     }
 
-    /**
-     * Called by the detector to deliver detection results.
-     * If your application called for it, this could be a place to check for
-     * equivalent detections by tracking TextBlocks that are similar in location and content from
-     * previous frames, or reduce noise by eliminating TextBlocks that have not persisted through
-     * multiple detections.
-     */
-    @Override
-    public void receiveDetections(Detector.Detections<TextBlock> detections) {
-        mGraphicOverlay.clear();
-        SparseArray<TextBlock> items = detections.getDetectedItems();
 
+    @Override
+    public void stop() {
+        try {
+            detector.close();
+        } catch (IOException e) {
+            Log.e(TAG, "Exception thrown while trying to close Text Detector: " + e);
+        }
+    }
+
+    @Override
+    protected Task<FirebaseVisionText> detectInImage(FirebaseVisionImage image) {
+        return detector.processImage(image);
+    }
+
+    @Override
+    protected void onSuccess(
+            @NonNull FirebaseVisionText results,
+            @NonNull FrameMetadata frameMetadata,
+            @NonNull GraphicOverlay graphicOverlay) {
+        graphicOverlay.clear();
         String fullRead="";
-        for (int i = 0; i < items.size(); ++i) {
-            TextBlock textBlock = items.valueAt(i);
+        List<FirebaseVisionText.TextBlock> blocks = results.getTextBlocks();
+        for (int i = 0; i < blocks.size(); i++) {
             String temp="";
-            for (Text line : textBlock.getComponents()) {
+            List<FirebaseVisionText.Line> lines = blocks.get(i).getLines();
+            for (int j = 0; j < lines.size(); j++) {
                 //extract scanned text lines here
-                temp+=line.getValue().trim()+"-";
+                //temp+=lines.get(j).getText().trim()+"-";
+                temp+=lines.get(j).getText()+"-";
             }
             temp=temp.replaceAll("\r", "").replaceAll("\n", "").replaceAll("\t", "");
             fullRead+=temp+"-";
-            Log.e("PreProcess", temp);
-
         }
-        fullRead=fullRead.replaceAll("\r", "").replaceAll("\n", "").replaceAll("\t", "");
-
         try {
             ILicensePlate iLicensePlate = LicensePlateManager.getInstance().extractLicense(fullRead);
             if(licenseListener!=null){
@@ -78,13 +92,11 @@ public class OcrLicensePlateDetectorProcessor implements Detector.Processor<Text
             }
         }catch (Exception e){
         }
+
     }
 
-    /**
-     * Frees the resources associated with this detection processor.
-     */
     @Override
-    public void release() {
-        mGraphicOverlay.clear();
+    protected void onFailure(@NonNull Exception e) {
+        Log.w(TAG, "Text detection failed." + e);
     }
 }
